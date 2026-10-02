@@ -1,0 +1,18 @@
+# Object files
+*.o
+
+# Executables
+*.out
+*.exe
+
+# Vim swap files
+*.swp
+*.swo
+
+# Core dumps
+core
+core.*
+
+# OS files
+.DS_Store
+Thumbs.db
