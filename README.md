@@ -89,25 +89,6 @@ Linux 파일 시스템에서 디렉터리 엔트리와 `stat` 구조체의 정�
 
 \---
 
-## Suggested Repository Structure
-
-```text
-linux-system-programming/
-├── small-shell/
-│   ├── main.c
-│   ├── smallsh.c
-│   ├── smallsh.h
-│   └── Makefile
-├── directory-explorer/
-│   ├── main.c
-│   ├── dir\_explorer.c
-│   ├── dir\_explorer.h
-│   └── Makefile
-└── README.md
-```
-
-\---
-
 ## Build \& Run
 
 각 프로젝트 디렉터리의 `Makefile`을 사용하는 경우:
