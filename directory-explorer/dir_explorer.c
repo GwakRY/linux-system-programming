@@ -21,7 +21,7 @@ void clear_input_buffer() {
 struct file_struct set_information(const char* filename, struct stat* statbuf) {
 	struct file_struct ret;
 
-	strcpy(ret.d_name, filename);
+	snprintf(ret.d_name, sizeof(ret.d_name), "%s", filename);
 
 	if(stat(filename,statbuf) == 0){
 		snprintf(ret.permissions, sizeof(ret.permissions), (S_ISDIR(statbuf->st_mode)) ? "d" : "-");
@@ -73,8 +73,8 @@ void print_dir_info(struct file_struct* file_list, int file_cnt) {
      printf("%s ",file_list[i].permissions);
      printf("%ld ",file_list[i].n_link);
      
-     printf(" %s ", file_list[i].pw->pw_name);
-     printf(" %s ", file_list[i].gr->gr_name);
+     printf(" %s ", file_list[i].pw ? file_list[i].pw->pw_name : "?");
+     printf(" %s ", file_list[i].gr ? file_list[i].gr->gr_name : "?");
      
      printf(" %10lld ",file_list[i].file_size);
      printf("%s ", file_list[i].time_str);
@@ -98,8 +98,8 @@ void print_reg_file_info(struct file_struct* file_list, int file_cnt) {
       printf("[X] ");
      printf("%s ",file_list[i].permissions);
      printf("%ld ",file_list[i].n_link);
-     printf(" %s ", file_list[i].pw->pw_name);
-     printf(" %s ", file_list[i].gr->gr_name);
+     printf(" %s ", file_list[i].pw ? file_list[i].pw->pw_name : "?");
+     printf(" %s ", file_list[i].gr ? file_list[i].gr->gr_name : "?");
      printf(" %10lld ",file_list[i].file_size);
      printf("%s ", file_list[i].time_str);
      printf("%s",  file_list[i].d_name);
@@ -114,8 +114,10 @@ void print_reg_file_info(struct file_struct* file_list, int file_cnt) {
 }
 
 void run(){
-	char* p = strcat(address_comp(), "$ ");
-	printf("%s%s%s\n",COLOR_BLUE, p, COLOR_RESET);
+	char *p = address_comp();
+	if (p == NULL) { perror("getcwd"); exit(EXIT_FAILURE); }
+	printf("%s%s$ %s\n", COLOR_BLUE, p, COLOR_RESET);
+	free(p);
 
 	struct file_struct directory_list[1023 + 1];
 	struct file_struct reg_file_list[1023 + 1];
@@ -130,15 +132,18 @@ void run(){
 	   fill several codes
 	   file_list_information() 함수 활용
 	   */
-	dir = opendir(address_comp());
+	dir = opendir(".");
+	if (dir == NULL) { perror("opendir"); return; }
 	while((entry = readdir(dir))!=NULL){
 		struct stat statbuf;
 		if(stat(entry->d_name, &statbuf)==0){
 			if(S_ISDIR(statbuf.st_mode)){
-				fill_list_information(directory_list, entry, dir_count++);
+				if (dir_count < 1024)
+				    fill_list_information(directory_list, entry, dir_count++);
 			}
 			else{
-				fill_list_information(reg_file_list, entry, reg_file_count++);
+				if (reg_file_count < 1024)
+				    fill_list_information(reg_file_list, entry, reg_file_count++);
 			}
 		}
 
@@ -155,8 +160,13 @@ void run(){
 
 	int next_dir_number = 0; 
 	printf(">>Enter directory number(cancel: -1, -l option : -2): ");
-	if (scanf("%d", &next_dir_number) != 1) {
-		perror("Invalid input. Please enter a number.");
+	int input_result = scanf("%d", &next_dir_number);
+	closedir(dir);
+	if (input_result == EOF) { exit(0); }
+	if (input_result != 1) {
+		printf("Invalid input. Please enter a number.\n");
+		clear_input_buffer();
+		return;
 	}
 	clear_input_buffer();
 
@@ -178,10 +188,11 @@ void run(){
 	}
  else{
 
-	char* mv_dir = cwd;
-
-	change_working_dir(mv_dir, directory_list[next_dir_number-1].d_name);
-	closedir(dir);
+	if (next_dir_number < 1 || next_dir_number > dir_count) {
+		printf("invalid directory number\n");
+		return;
+	}
+	change_working_dir(cwd, directory_list[next_dir_number-1].d_name);
  }
  printf("\n");
 }

@@ -31,7 +31,7 @@ struct file_struct {
     struct group *gr;
     struct tm *tm_info;
     char time_str[20];
-    char d_name[80];
+    char d_name[256];
     long n_link;
     long long file_size;
 };

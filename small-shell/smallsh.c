@@ -131,16 +131,14 @@ int runcommand(char **cline, int where) {
     int status;
 
     
-    char *arg[MAXARG + 1];
-    int narg = 0;
-    int toktype = gettok(&arg[narg]);
+    // procline() has already parsed this command; do not consume another token.
 
     // ---------------------------------------------
     // Exit command: terminates the shell if 'exit' is entered
     // ---------------------------------------------
 
     if (strcmp(*cline, "exit") == 0)
-        exit(1);
+        exit(0);
 
     // ---------------------------------------------
     // Handle 'cd' command with argument parsing
@@ -162,6 +160,7 @@ int runcommand(char **cline, int where) {
         return -1;
     case 0: // Code executed by the child process  
            sigset_t set_int;
+            sigemptyset(&set_int);
             sigaddset(&set_int, SIGINT);
         if(where == BACKGROUND){//background는 SIGINT blcok 하여 계속 수행
             sigprocmask(SIG_BLOCK, &set_int, NULL);
@@ -200,66 +199,36 @@ int runcommand(char **cline, int where) {
 
 // Function to handle 'cd' command
 int handle_cd_command(char **cline) {
-    int argCount = 0;
+    struct passwd *userInfo = getpwuid(getuid());
+    char *target = cline[1];
+    char *expanded = NULL;
 
-    // Count the number of arguments
-    while (cline[argCount] != NULL) {
-        argCount++;
-    }
-
-    if (argCount > 2) {
-        printf("too many arguments.\n");
+    if (cline[1] != NULL && cline[2] != NULL) {
+        fprintf(stderr, "cd: too many arguments\n");
         return 1;
     }
-
-    // Change to home directory if no argument is given
-    if (argCount == 1) {
-        struct passwd *userInfo = getpwuid(getuid());
-        chdir(userInfo->pw_dir);
-    } else if (argCount == 2) {
-        char currentDir[200];
-        char targetDir[200] = {0};
-
-        getcwd(currentDir, sizeof(currentDir)); // Get current directory path
-        struct passwd *userInfo = getpwuid(getuid());
-
-        // Determine the target directory
-        if (cline[1][0] == '~') { // Handle '~' as home directory shortcut
-            strcpy(targetDir, userInfo->pw_dir);
-            if (strcmp(cline[1], "~") != 0) {    // If "~" followed by path
-                strcat(targetDir, cline[1] + 1); // Append path after '~'
-            }
-        } else if (cline[1][0] == '/') { // Absolute path
-            strcpy(targetDir, cline[1]);
-        } else { // Relative path
-            snprintf(targetDir, sizeof(targetDir), "%s/%s", currentDir, cline[1]);
-        }
-        // Attempt to change directory and handle error if it fails
-        if (chdir(targetDir) != 0) {
-            perror("cd error"); // Print error message if directory change fails
+    if (target == NULL || target[0] == '~') {
+        if (userInfo == NULL) {
+            fprintf(stderr, "cd: cannot find home directory\n");
             return 1;
         }
-    }
-
-    // Construct prompt string
-    char prompt[200];
-    char promptDir[200] = {0};
-    getcwd(prompt, sizeof(prompt)); // Get the new current directory
-
-    struct passwd *userInfo = getpwuid(getuid());
-    if (strstr(prompt, userInfo->pw_dir) == NULL) {
-        snprintf(promptDir, sizeof(promptDir), "%s$ ", prompt);
-    } else {
-        if (strcmp(userInfo->pw_dir, prompt) == 0) {
-            strcpy(promptDir, "~$ ");
-        } else {
-            snprintf(promptDir, sizeof(promptDir), "~%s$ ", prompt + strlen(userInfo->pw_dir));
+        const char *suffix = target == NULL ? "" : target + 1;
+        expanded = malloc(strlen(userInfo->pw_dir) + strlen(suffix) + 1);
+        if (expanded == NULL) {
+            perror("malloc");
+            return 1;
         }
+        strcpy(expanded, userInfo->pw_dir);
+        strcat(expanded, suffix);
+        target = expanded;
     }
-
-    // Start new input loop with updated prompt
-    while (userin(promptDir) != EOF)
-        procline();
-
+    int result = chdir(target);
+    free(expanded);
+    if (result != 0) {
+        perror("cd");
+        return 1;
+    }
+    // Refresh the existing main loop rather than enter a nested input loop.
+    initializePrompt();
     return 0;
 }

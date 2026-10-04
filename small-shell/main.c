@@ -18,15 +18,16 @@ void initializePrompt() {
     }
 
     // Set up the prompt based on whether the current directory is within the home directory
-    if (strstr(currentDir, userInfo->pw_dir) != NULL) { // Inside home directory or subdirectory
+    if (userInfo != NULL && strncmp(currentDir, userInfo->pw_dir, strlen(userInfo->pw_dir)) == 0 &&
+        (currentDir[strlen(userInfo->pw_dir)] == '/' || currentDir[strlen(userInfo->pw_dir)] == '\0')) { // Inside home directory or subdirectory
         if (strcmp(userInfo->pw_dir, currentDir) == 0) {
             snprintf(prompt, sizeof(prompt), "~$ "); // If exactly home directory, show "~$ "
         } else {
-            snprintf(prompt, sizeof(prompt), "~%s$ ",
+            snprintf(prompt, sizeof(prompt), "~%.196s$ ",
                      currentDir + strlen(userInfo->pw_dir)); // Show "~" + relative path
         }
     } else {
-        snprintf(prompt, sizeof(prompt), "%s$ ", currentDir); // Outside home directory, show full path
+        snprintf(prompt, sizeof(prompt), "%.197s$ ", currentDir); // Outside home directory, show full path
     }
 }
 
@@ -48,6 +49,7 @@ int main() {
     
     //2. SIGINT 처리
     sigset_t set_int;
+    sigemptyset(&set_int);
     sigaddset(&set_int, SIGINT);
     sigprocmask(SIG_BLOCK, &set_int, NULL);
     //signal(SIGINT, background_handler);
