@@ -27,3 +27,4 @@ int runcommand(char **cline, int where);
 
 int handle_cd_command(char **cline);
 
+void initializePrompt(void);

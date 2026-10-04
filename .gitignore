@@ -16,3 +16,10 @@ core.*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Makefile build outputs
+/small-shell/smallsh
+/directory-explorer/project1
+
+# Python test cache
+__pycache__/
